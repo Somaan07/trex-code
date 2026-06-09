@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "T-rex Window & Eaves Cleaning INC.",
+  title: "T-Rex Window & Eaves Cleaning INC.",
   description: "Serving The GTA Since 2007",
 };
 
