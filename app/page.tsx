@@ -1,5 +1,5 @@
 "use client";
-
+import { supabase } from './supabase';
 import { useState } from "react";
 
 // ─── Colour & design tokens (mirrored in Tailwind classes below) ───────────────
@@ -56,15 +56,56 @@ export default function Home() {
     service: "",
   });
   const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false); // This acts as our gatekeeper tracker
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => setForm({ ...form, [e.target.name]: e.target.value });
 
-  const handleSubmit = (e: React.MouseEvent<HTMLButtonElement>) => {
+  const handleSubmit = async (e: React.FormEvent | React.MouseEvent) => {
     e.preventDefault();
-    // Placeholder: wire to your backend / email service here
-    setSubmitted(true);
+    
+    // If the form is already sending data, stop immediately to prevent duplicates
+    if (loading) return; 
+    setLoading(true); 
+    
+    try {
+      const { error } = await supabase
+        .from('leads')
+        .insert([
+          {
+            name: form.name,
+            phone: form.phone,
+            email: form.email,
+            address: form.address,
+            service_needed: form.service || 'Window Cleaning',
+            status: 'New'
+          }
+        ]);
+
+      if (error) throw error;
+      // Ping our internal secure server route to shoot the email to Mom instantly
+      await fetch('/api/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: form.name,
+          phone: form.phone,
+          email: form.email,
+          address: form.address,
+          service: form.service
+        })
+      });
+
+      setForm({ name: "", phone: "", email: "", address: "", service: "" });
+      setSubmitted(true);
+      
+    } catch (err) {
+      console.error('Error saving quote to database:', err);
+      alert('Something went wrong. Please try again!');
+    } finally {
+      setLoading(false); // Re-open the gatekeeper after completion
+    }
   };
 
   return (
@@ -357,9 +398,10 @@ export default function Home() {
 
               <button
                 onClick={handleSubmit}
-                className="mt-8 w-full bg-[#1A9E4F] hover:bg-[#22C06A] text-white font-bold text-base py-4 rounded-xl shadow-lg transition-all duration-200 hover:scale-[1.02] active:scale-100"
+                disabled={loading}
+                className="mt-8 w-full bg-[#1A9E4F] hover:bg-[#22C06A] disabled:bg-slate-600 text-white font-bold text-base py-4 rounded-xl shadow-lg transition-all duration-200 hover:scale-[1.02] active:scale-100 disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                Submit Quote Request
+                {loading ? "Submitting..." : "Submit Quote Request"}
               </button>
 
               <p className="text-slate-500 text-xs text-center mt-4">
