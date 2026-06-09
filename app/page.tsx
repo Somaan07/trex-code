@@ -132,7 +132,7 @@ export default function Home() {
                 T-Rex Window &amp; Eaves
               </p>
               <p className="text-[#C8882A] font-semibold text-xs sm:text-sm tracking-widest uppercase">
-                Cleaning Ltd.
+                Cleaning INC.
               </p>
             </div>
           </div>
@@ -485,7 +485,7 @@ export default function Home() {
             {/* Brand */}
             <div>
               <p className="text-white font-extrabold text-base mb-1">
-                T-Rex Window &amp; Eaves Cleaning Ltd.
+                T-Rex Window &amp; Eaves Cleaning INC.
               </p>
               <p className="text-[#C8882A] text-xs font-semibold uppercase tracking-widest mb-4">
                 Est. 2007
@@ -546,7 +546,7 @@ export default function Home() {
           {/* Bottom bar */}
           <div className="border-t border-white/10 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
             <p>
-              © {new Date().getFullYear()} T-Rex Window &amp; Eaves Cleaning Ltd. All rights reserved.
+              © {new Date().getFullYear()} T-Rex Window &amp; Eaves Cleaning INC. All rights reserved.
             </p>
             <p className="flex items-center gap-2">
               <ShieldIcon />

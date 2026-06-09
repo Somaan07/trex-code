@@ -63,7 +63,7 @@ export async function POST(request: Request) {
             <p style="font-weight: bold; color: #0B1629; margin-top: 5px;">The T-Rex Team</p>
             
             <p style="font-size: 11px; color: #94a3b8; text-align: center; margin-top: 30px;">
-              © 2026 T-Rex Window & Eaves Cleaning Ltd. · Fully Insured · Proudly Serving the GTA
+              © 2026 T-Rex Window & Eaves Cleaning INC. · Fully Insured · Proudly Serving the GTA
             </p>
           </div>
         `,
