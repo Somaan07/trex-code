@@ -93,9 +93,10 @@ function useScrollReveal() {
     }
     function check() {
       const { top, bottom } = node!.getBoundingClientRect();
-      setVisible(top < window.innerHeight * 0.88 && bottom > 0);
+      const h = window.innerHeight;
+      if (top < h * 0.82) setVisible(true);
+      if (bottom < 0) setVisible(false);
     }
-    check();
     document.addEventListener("scroll", check, { passive: true });
     window.addEventListener("resize", check, { passive: true });
     return () => {
@@ -292,7 +293,7 @@ export default function Home() {
 
         <div
           className={`relative z-10 max-w-7xl mx-auto px-4 flex flex-col justify-center w-full transition-all duration-700 ease-out ${
-            heroVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"
+            heroVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"
           }`}
         >
           <p className="inline-flex items-center gap-2 text-[#E09A30] text-xs font-bold uppercase tracking-[0.2em] mb-5">
@@ -347,8 +348,8 @@ export default function Home() {
       <section
         id="services"
         ref={servicesReveal.ref}
-        className={`py-20 sm:py-28 bg-[#EAE3D3] transition-all duration-700 ease-out ${
-          servicesReveal.visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
+        className={`py-20 sm:py-28 bg-[#EAE3D3] transition-all duration-[900ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${
+          servicesReveal.visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-20"
         }`}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -372,7 +373,7 @@ export default function Home() {
                 className={`group bg-[#F7F2E7] rounded-2xl shadow-sm hover:shadow-xl border border-[#DDD3BC] hover:border-[#C8882A]/30 p-7 transition-all duration-500 ease-out hover:-translate-y-1 ${
                   servicesReveal.visible
                     ? "opacity-100 translate-y-0"
-                    : "opacity-0 translate-y-6"
+                    : "opacity-0 translate-y-14"
                 }`}
               >
                 <div className="w-14 h-14 rounded-xl bg-[#0F2040] flex items-center justify-center text-2xl mb-5 group-hover:bg-[#C8882A] transition-colors duration-300">
@@ -393,7 +394,7 @@ export default function Home() {
               className={`bg-[#0F2040] rounded-2xl p-7 flex flex-col justify-between transition-all duration-500 ease-out ${
                 servicesReveal.visible
                   ? "opacity-100 translate-y-0"
-                  : "opacity-0 translate-y-6"
+                  : "opacity-0 translate-y-14"
               }`}
             >
               <div>
@@ -423,8 +424,8 @@ export default function Home() {
       <section
         id="estimate"
         ref={estimateReveal.ref}
-        className={`py-20 sm:py-28 bg-[#0B1629] transition-all duration-700 ease-out ${
-          estimateReveal.visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
+        className={`py-20 sm:py-28 bg-[#0B1629] transition-all duration-[900ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${
+          estimateReveal.visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-20"
         }`}
       >
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -567,8 +568,8 @@ export default function Home() {
       <section
         id="testimonials"
         ref={testimonialsReveal.ref}
-        className={`py-20 sm:py-28 bg-[#EAE3D3] transition-all duration-700 ease-out ${
-          testimonialsReveal.visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
+        className={`py-20 sm:py-28 bg-[#EAE3D3] transition-all duration-[900ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${
+          testimonialsReveal.visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-20"
         }`}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -611,7 +612,7 @@ export default function Home() {
                 className={`bg-[#F7F2E7] rounded-2xl border border-[#DDD3BC] shadow-sm p-7 transition-all duration-500 ease-out ${
                   testimonialsReveal.visible
                     ? "opacity-100 translate-y-0"
-                    : "opacity-0 translate-y-6"
+                    : "opacity-0 translate-y-14"
                 }`}
               >
                 <div className="flex gap-0.5 mb-4">
@@ -640,8 +641,8 @@ export default function Home() {
       <section
         id="faq"
         ref={faqReveal.ref}
-        className={`py-20 sm:py-28 bg-[#0F2040] transition-all duration-700 ease-out ${
-          faqReveal.visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
+        className={`py-20 sm:py-28 bg-[#0F2040] transition-all duration-[900ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${
+          faqReveal.visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-20"
         }`}
       >
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -667,7 +668,7 @@ export default function Home() {
                   className={`rounded-xl border border-white/10 bg-[#162B50] overflow-hidden transition-all duration-500 ease-out ${
                     faqReveal.visible
                       ? "opacity-100 translate-y-0"
-                      : "opacity-0 translate-y-6"
+                      : "opacity-0 translate-y-10"
                   }`}
                 >
                   <button
@@ -705,8 +706,8 @@ export default function Home() {
 
       <footer
         ref={footerReveal.ref}
-        className={`bg-[#0B1629] border-t border-white/10 transition-all duration-700 ease-out ${
-          footerReveal.visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"
+        className={`bg-[#0B1629] border-t border-white/10 transition-all duration-[900ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${
+          footerReveal.visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-20"
         }`}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
