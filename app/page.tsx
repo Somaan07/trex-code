@@ -182,7 +182,7 @@ export default function Home() {
         </div>
       </header>
 
-      <section id="home" className="relative h-[75vh] min-h-[550px] bg-[#0F2040] overflow-hidden">
+      <section id="home" className="relative h-[85vh] sm:h-screen w-full bg-[#0F2040] overflow-hidden">
         {HERO_IMAGES.map((img, index) => (
           <div
             key={img}
@@ -202,47 +202,40 @@ export default function Home() {
 
         <div className="absolute bottom-0 left-0 w-full h-1 bg-[#E09A30] z-20" />
 
-        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex flex-col justify-center">
-          <p className="inline-flex items-center gap-2 text-[#E09A30] text-xs font-bold uppercase tracking-[0.2em] mb-5">
-            <span className="w-6 h-px bg-[#C8882A]" />
-            Serving the GTA Since 2007
-          </p>
+        <div className="relative z-10 max-w-7xl mx-auto px-4 h-full flex flex-col justify-center pt-16 sm:pt-0">
+          <div className="flex flex-col justify-center">
+            <p className="inline-flex items-center gap-2 text-[#E09A30] text-xs font-bold uppercase tracking-[0.2em] mb-5">
+              <span className="w-6 h-px bg-[#C8882A]" />
+              Serving the GTA Since 2007
+            </p>
 
-          <h1 className="text-white font-extrabold text-4xl sm:text-5xl lg:text-6xl leading-tight max-w-3xl mb-6">
-            Premium Residential &amp; Commercial{" "}
-            <span className="text-[#E09A30]">Window &amp; Eavestrough</span>{" "}
-            Maintenance in the GTA
-          </h1>
+            <h1 className="text-white font-extrabold text-4xl sm:text-5xl lg:text-6xl leading-tight max-w-3xl mb-6">
+              Premium Residential &amp; Commercial{" "}
+              <span className="text-[#E09A30]">Window &amp; Eavestrough</span>{" "}
+              Maintenance in the GTA
+            </h1>
 
-          <p className="text-slate-300 text-lg sm:text-xl max-w-xl leading-relaxed mb-10">
-            Trusted, family-owned &amp; fully insured service — delivered with
-            care and professionalism since 2007.
-          </p>
+            <p className="text-slate-300 text-lg sm:text-xl max-w-xl leading-relaxed mb-10">
+              Trusted, family-owned &amp; fully insured service — delivered with
+              care and professionalism since 2007.
+            </p>
 
-          <div className="flex flex-col sm:flex-row gap-4">
-            <a
-              href="#estimate"
-              className="inline-flex justify-center items-center gap-2 bg-[#1A9E4F] hover:bg-[#22C06A] text-white text-base font-bold px-8 py-4 rounded-xl shadow-lg transition-all duration-200 hover:scale-105"
-            >
-              Get a Free Estimate
-              <ArrowIcon />
-            </a>
-            <a
-              href="tel:4165318739"
-              className="inline-flex justify-center items-center gap-2 border-2 border-[#C8882A] text-[#E09A30] hover:bg-[#C8882A] hover:text-white text-base font-semibold px-8 py-4 rounded-xl transition-all duration-200"
-            >
-              <PhoneIcon />
-              416-531-8739
-            </a>
-          </div>
-
-          <div className="flex flex-wrap gap-6 mt-12">
-            {["Fully Insured", "Family-Owned", "17+ Years Experience", "Free Estimates"].map((badge) => (
-              <div key={badge} className="flex items-center gap-2 text-slate-300 text-sm drop-shadow-sm">
-                <CheckIcon />
-                {badge}
-              </div>
-            ))}
+            <div className="flex flex-col sm:flex-row gap-4">
+              <a
+                href="#estimate"
+                className="inline-flex justify-center items-center gap-2 bg-[#1A9E4F] hover:bg-[#22C06A] text-white text-base font-bold px-8 py-4 rounded-xl shadow-lg transition-all duration-200 hover:scale-105"
+              >
+                Get a Free Estimate
+                <ArrowIcon />
+              </a>
+              <a
+                href="tel:4165318739"
+                className="inline-flex justify-center items-center gap-2 border-2 border-[#C8882A] text-[#E09A30] hover:bg-[#C8882A] hover:text-white text-base font-semibold px-8 py-4 rounded-xl transition-all duration-200"
+              >
+                <PhoneIcon />
+                416-531-8739
+              </a>
+            </div>
           </div>
         </div>
       </section>
