@@ -32,7 +32,6 @@ const FAQS = [
   { question: "Can I set up a recurring cleaning schedule?", answer: "Definitely. Many of our clients book us automatically for spring and fall visits every year so they never have to think about it. Just mention it on your quote request and we'll set it up." },
 ];
 
-// Smooth scroll with a brief dark flash between sections
 function useNavScroll() {
   const [flashing, setFlashing] = useState(false);
 
@@ -62,7 +61,7 @@ export default function Home() {
 
   const { flashing, scrollTo } = useNavScroll();
 
-  // Single, global Intersection Observer for all animations
+  // Desktop-optimized Intersection Observer
   useEffect(() => {
     const targets = document.querySelectorAll<HTMLElement>("[data-reveal]");
     if (targets.length === 0) return;
@@ -70,7 +69,8 @@ export default function Home() {
     const observer = new IntersectionObserver(
       (entries, obs) => {
         entries.forEach((entry) => {
-          if (entry.isIntersecting) {
+          // If it's already visible or intersecting, fire it up
+          if (entry.isIntersecting || entry.boundingClientRect.top < window.innerHeight) {
             const el = entry.target as HTMLElement;
             const delay = el.dataset.delay ?? "0";
             
@@ -80,25 +80,22 @@ export default function Home() {
         });
       },
       { 
-        threshold: 0.05, 
-        rootMargin: "0px" 
+        threshold: 0, 
+        rootMargin: "0px 0px -80px 0px" // Triggers slightly before hitting the bottom on desktop
       }
     );
 
     targets.forEach((el) => observer.observe(el));
-
     return () => observer.disconnect();
   }, []);
 
-  // Hero entrance — just a one-shot fade on mount, no scroll needed
   useEffect(() => {
     const id = requestAnimationFrame(() => setHeroReady(true));
     return () => cancelAnimationFrame(id);
   }, []);
 
-  // Hero slideshow interval
   useEffect(() => {
-    const t = setInterval(() => setCurrentSlide(p => (p + 1) % HERO_IMAGES.length), 5000);
+    const t = setInterval(() => setCurrentSlide(p => (p + 1) % HERO_IMAGES.length), 6000); // 6s interval for Ken Burns effect
     return () => clearInterval(t);
   }, []);
 
@@ -136,13 +133,13 @@ export default function Home() {
 
   return (
     <>
-      {/* Global reveal styles — only transition/transform, no keyframes needed */}
       <style>{`
         [data-reveal] {
           opacity: 0;
-          transform: translateY(28px);
-          transition: opacity 0.65s cubic-bezier(0.25, 0.46, 0.45, 0.94),
-                      transform 0.65s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+          transform: translateY(30px);
+          transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1),
+                      transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+          will-change: transform, opacity;
         }
         [data-reveal].is-visible {
           opacity: 1;
@@ -154,17 +151,32 @@ export default function Home() {
           pointer-events: none;
           transition: opacity 0.25s ease;
         }
+        
+        /* Ken Burns Slow Zoom Effect */
+        .hero-zoom-bg {
+          position: absolute;
+          inset: 0;
+          background-position: center;
+          background-size: cover;
+          transform: scale(1.02);
+          transition: opacity 1.2s ease-in-out, transform 6s linear;
+        }
+        .hero-zoom-active {
+          opacity: 1;
+          transform: scale(1.12);
+        }
+        .hero-zoom-inactive {
+          opacity: 0;
+          transform: scale(1.02);
+        }
+
         @media (prefers-reduced-motion: reduce) {
           [data-reveal] { opacity: 1; transform: none; transition: none; }
+          .hero-zoom-bg { transform: none !important; transition: none !important; }
         }
       `}</style>
 
-      {/* Nav flash overlay */}
-      <div
-        className="nav-flash"
-        style={{ opacity: flashing ? 0.2 : 0 }}
-        aria-hidden="true"
-      />
+      <div className="nav-flash" style={{ opacity: flashing ? 0.2 : 0 }} aria-hidden="true" />
 
       <div className="min-h-screen bg-[#EAE3D3] font-sans text-[#0B1629]">
 
@@ -198,15 +210,17 @@ export default function Home() {
         {/* ── HERO ── */}
         <section id="home" className="relative w-full bg-[#0F2040] overflow-hidden py-20 lg:min-h-screen lg:flex lg:items-center">
           {HERO_IMAGES.map((img, i) => (
-            <div key={img} className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${i === currentSlide ? "opacity-100" : "opacity-0"}`}
-              style={{ backgroundImage: `url('${img}')`, backgroundPosition: "center", backgroundSize: "cover" }}>
+            <div 
+              key={img} 
+              className={`hero-zoom-bg ${i === currentSlide ? "hero-zoom-active" : "hero-zoom-inactive"}`}
+              style={{ backgroundImage: `url('${img}')` }}
+            >
               <div className="absolute inset-0 bg-[#0B1629]/75 mix-blend-multiply" />
             </div>
           ))}
           <div className="absolute bottom-0 left-0 w-full h-1 bg-[#E09A30] z-20" />
 
-          {/* Hero content fades in on mount — no scroll needed since it's above the fold */}
-          <div className={`relative z-10 max-w-7xl mx-auto px-4 flex flex-col justify-center w-full transition-all duration-700 ease-out ${heroReady ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
+          <div className={`relative z-10 max-w-7xl mx-auto px-4 flex flex-col justify-center w-full transition-all duration-1000 ease-out ${heroReady ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
             <p className="inline-flex items-center gap-2 text-[#E09A30] text-xs font-bold uppercase tracking-[0.2em] mb-5">
               <span className="w-6 h-px bg-[#C8882A]" /> Serving the GTA Since 2007
             </p>
@@ -246,7 +260,7 @@ export default function Home() {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {SERVICES.map((svc, idx) => (
-                <div key={svc.title} data-reveal data-delay={idx * 80}
+                <div key={svc.title} data-reveal data-delay={idx * 60}
                   className="group bg-[#F7F2E7] rounded-2xl shadow-sm hover:shadow-xl border border-[#DDD3BC] hover:border-[#C8882A]/30 p-7 hover:-translate-y-1 transition-[transform,box-shadow] duration-200">
                   <div className="w-14 h-14 rounded-xl bg-[#0F2040] flex items-center justify-center text-2xl mb-5 group-hover:bg-[#C8882A] transition-colors duration-300">{svc.icon}</div>
                   <div className="w-8 h-0.5 bg-[#C8882A] rounded-full mb-4 group-hover:w-14 transition-all duration-300" />
@@ -254,7 +268,7 @@ export default function Home() {
                   <p className="text-slate-500 text-sm leading-relaxed">{svc.desc}</p>
                 </div>
               ))}
-              <div data-reveal data-delay={SERVICES.length * 80} className="bg-[#0F2040] rounded-2xl p-7 flex flex-col justify-between">
+              <div data-reveal data-delay={SERVICES.length * 60} className="bg-[#0F2040] rounded-2xl p-7 flex flex-col justify-between">
                 <div>
                   <p className="text-[#E09A30] text-xs font-bold uppercase tracking-widest mb-3">Not Listed?</p>
                   <h3 className="text-white font-bold text-lg mb-3 leading-snug">Have a unique job?<br />We&apos;ll take a look.</h3>
@@ -273,7 +287,6 @@ export default function Home() {
         <section id="estimate" className="py-20 sm:py-28 bg-[#0B1629] relative overflow-hidden">
           <div className="absolute top-0 left-0 w-64 h-64 rounded-full bg-[#C8882A]/5 -translate-x-1/2 -translate-y-1/2 pointer-events-none" />
           <div className="absolute bottom-0 right-0 w-96 h-96 rounded-full bg-[#1A9E4F]/5 translate-x-1/3 translate-y-1/3 pointer-events-none" />
-          <div className="absolute top-1/2 right-0 w-48 h-48 rounded-full bg-[#E09A30]/4 translate-x-1/2 -translate-y-1/2 pointer-events-none" />
           <div className="relative z-10 max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
             <div data-reveal className="text-center mb-12">
               <p className="text-[#C8882A] text-xs font-bold uppercase tracking-[0.2em] mb-3">No Obligation</p>
@@ -287,7 +300,7 @@ export default function Home() {
                 <p className="text-slate-400">Thanks for reaching out. We&apos;ll be in touch at the contact info you provided.</p>
               </div>
             ) : (
-              <form onSubmit={handleSubmit} data-reveal data-delay="80"
+              <form onSubmit={handleSubmit} data-reveal data-delay="50"
                 className="bg-[#162B50] rounded-2xl border border-white/10 p-8 sm:p-10 shadow-2xl">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                   <FormField label="Full Name" name="name" type="text" placeholder="Jane Smith" value={form.name} onChange={handleChange} />
@@ -344,7 +357,7 @@ export default function Home() {
                 { name: "David K.", location: "Etobicoke", quote: "They saved us from a very costly water damage situation — our eavestroughs were completely clogged. Highly recommend." },
                 { name: "Linda T.", location: "Scarborough", quote: "Friendly team, fair price, and they even cleaned up after themselves. Will definitely call them again in the fall." },
               ].map((t, idx) => (
-                <div key={t.name} data-reveal data-delay={idx * 100} className="bg-[#F7F2E7] rounded-2xl border border-[#DDD3BC] shadow-sm p-7">
+                <div key={t.name} data-reveal data-delay={idx * 60} className="bg-[#F7F2E7] rounded-2xl border border-[#DDD3BC] shadow-sm p-7">
                   <div className="flex gap-0.5 mb-4">{Array.from({ length: 5 }).map((_, i) => <StarIcon key={i} />)}</div>
                   <p className="text-slate-600 text-sm leading-relaxed mb-5 italic">&ldquo;{t.quote}&rdquo;</p>
                   <div className="flex items-center gap-3">
@@ -372,7 +385,7 @@ export default function Home() {
             </div>
             <div className="lg:grid lg:grid-cols-[1fr_2fr] lg:gap-16 lg:items-start">
               <div className="hidden lg:flex flex-col gap-6 sticky top-28">
-                <div data-reveal data-delay="80" className="bg-[#162B50] rounded-2xl p-6 border border-white/10">
+                <div data-reveal data-delay="50" className="bg-[#162B50] rounded-2xl p-6 border border-white/10">
                   <p className="text-[#E09A30] text-xs font-bold uppercase tracking-widest mb-4">By the numbers</p>
                   {[
                     { num: "17+",  label: "Years in the GTA" },
@@ -386,7 +399,7 @@ export default function Home() {
                     </div>
                   ))}
                 </div>
-                <div data-reveal data-delay="160" className="bg-[#1A9E4F]/10 border border-[#1A9E4F]/30 rounded-2xl p-6">
+                <div data-reveal data-delay="100" className="bg-[#1A9E4F]/10 border border-[#1A9E4F]/30 rounded-2xl p-6">
                   <p className="text-white font-bold mb-2">Still have questions?</p>
                   <p className="text-slate-400 text-sm mb-4">We&apos;re happy to talk through your specific situation.</p>
                   <a href="tel:4165318739" className="inline-flex items-center gap-2 text-[#22C06A] font-semibold text-sm hover:text-white transition-colors">
@@ -398,7 +411,7 @@ export default function Home() {
                 {FAQS.map((faq, idx) => {
                   const isOpen = openFaqs.has(idx);
                   return (
-                    <div key={faq.question} data-reveal data-delay={idx * 60} className="rounded-xl border border-white/10 bg-[#162B50] overflow-hidden">
+                    <div key={faq.question} data-reveal data-delay={idx * 40} className="rounded-xl border border-white/10 bg-[#162B50] overflow-hidden">
                       <button type="button" onClick={() => toggleFaq(idx)} aria-expanded={isOpen}
                         className="w-full flex items-center justify-between gap-4 text-left px-6 py-5 text-white font-semibold text-base hover:text-[#E09A30] transition-colors">
                         {faq.question}
@@ -406,7 +419,7 @@ export default function Home() {
                       </button>
                       <div className={`grid transition-all duration-300 ease-out ${isOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}>
                         <div className="overflow-hidden">
-                          <p className="text-slate-300 text-sm leading-relaxed px-6 pb-5">{faq.answer}</p>
+                          <p className="text-slate-300 text-sm leasing-relaxed px-6 pb-5">{faq.answer}</p>
                         </div>
                       </div>
                     </div>
@@ -426,14 +439,14 @@ export default function Home() {
                 <p className="text-[#C8882A] text-xs font-semibold uppercase tracking-widest mb-4">Est. 2007</p>
                 <p className="text-slate-500 text-sm leading-relaxed">Family-owned, fully insured exterior cleaning services across Toronto and the Greater Toronto Area.</p>
               </div>
-              <div data-reveal data-delay="80">
+              <div data-reveal data-delay="50">
                 <p className="text-slate-300 font-bold text-sm uppercase tracking-wide mb-4">Contact</p>
                 <ul className="space-y-2 text-sm text-slate-400">
                   <li><a href="tel:4165318739" className="hover:text-[#E09A30] transition-colors">📞 416-531-TREX (8739)</a></li>
                   <li><a href="mailto:info@trexcanada.com" className="hover:text-[#E09A30] transition-colors">✉️ info@trexcanada.com</a></li>
                 </ul>
               </div>
-              <div data-reveal data-delay="160">
+              <div data-reveal data-delay="100">
                 <p className="text-slate-300 font-bold text-sm uppercase tracking-wide mb-4">Service Areas</p>
                 <ul className="space-y-1 text-sm text-slate-400">
                   {["Toronto", "North York", "Scarborough", "Etobicoke", "Surrounding GTA"].map((area) => (
