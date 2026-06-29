@@ -94,7 +94,7 @@ function useScrollReveal() {
     function check() {
       const { top, bottom } = node!.getBoundingClientRect();
       const h = window.innerHeight;
-      if (top < h * 0.92) setVisible(true);
+      if (top < h * 0.78) setVisible(true);
       if (bottom < 0) setVisible(false);
     }
     const t = setTimeout(check, 80);
@@ -377,8 +377,10 @@ export default function Home() {
                 key={svc.title}
                 style={{
                   opacity: servicesReveal.visible ? 1 : 0,
-                  transform: servicesReveal.visible ? "translateY(0)" : "translateY(48px)",
-                  transition: `opacity 0.7s cubic-bezier(0.22,1,0.36,1) ${idx * 90}ms, transform 0.7s cubic-bezier(0.22,1,0.36,1) ${idx * 90}ms`,
+                  transform: servicesReveal.visible
+                    ? "translate(0,0)"
+                    : idx % 2 === 0 ? "translate(-48px, 24px)" : "translate(48px, 24px)",
+                  transition: `opacity 0.7s cubic-bezier(0.22,1,0.36,1) ${idx * 80}ms, transform 0.7s cubic-bezier(0.22,1,0.36,1) ${idx * 80}ms`,
                 }}
                 className="group bg-[#F7F2E7] rounded-2xl shadow-sm hover:shadow-xl border border-[#DDD3BC] hover:border-[#C8882A]/30 p-7 hover:-translate-y-1 hover:transition-transform hover:duration-200"
               >
@@ -394,8 +396,8 @@ export default function Home() {
             <div
               style={{
                 opacity: servicesReveal.visible ? 1 : 0,
-                transform: servicesReveal.visible ? "translateY(0)" : "translateY(48px)",
-                transition: `opacity 0.7s cubic-bezier(0.22,1,0.36,1) ${SERVICES.length * 90}ms, transform 0.7s cubic-bezier(0.22,1,0.36,1) ${SERVICES.length * 90}ms`,
+                transform: servicesReveal.visible ? "translate(0,0)" : "translate(48px, 24px)",
+                transition: `opacity 0.7s cubic-bezier(0.22,1,0.36,1) ${SERVICES.length * 80}ms, transform 0.7s cubic-bezier(0.22,1,0.36,1) ${SERVICES.length * 80}ms`,
               }}
               className="bg-[#0F2040] rounded-2xl p-7 flex flex-col justify-between"
             >
@@ -639,10 +641,14 @@ export default function Home() {
       <section
         id="faq"
         ref={faqReveal.ref}
-        className="py-20 sm:py-28 bg-[#0F2040]"
+        className="py-20 sm:py-28 bg-[#0F2040] relative overflow-hidden"
         style={faqReveal.style}
       >
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Background decorative elements */}
+        <div className="absolute top-0 left-0 w-64 h-64 rounded-full bg-[#C8882A]/5 -translate-x-1/2 -translate-y-1/2 pointer-events-none" />
+        <div className="absolute bottom-0 right-0 w-96 h-96 rounded-full bg-[#1A9E4F]/5 translate-x-1/3 translate-y-1/3 pointer-events-none" />
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="mb-14 text-center">
             <p className="text-[#E09A30] text-xs font-bold uppercase tracking-[0.2em] mb-3">
               Common Questions
@@ -652,6 +658,36 @@ export default function Home() {
             </h2>
             <div className="w-12 h-1 bg-[#C8882A] rounded-full mx-auto" />
           </div>
+
+          <div className="lg:grid lg:grid-cols-[1fr_2fr] lg:gap-16 lg:items-start">
+
+            {/* Left sidebar — stats + contact nudge */}
+            <div className="hidden lg:flex flex-col gap-6 sticky top-28">
+              <div className="bg-[#162B50] rounded-2xl p-6 border border-white/10">
+                <p className="text-[#E09A30] text-xs font-bold uppercase tracking-widest mb-4">By the numbers</p>
+                {[
+                  { num: "17+", label: "Years in the GTA" },
+                  { num: "100%", label: "Insured & certified" },
+                  { num: "2×", label: "Recommended per year" },
+                  { num: "Free", label: "Every estimate" },
+                ].map(({ num, label }) => (
+                  <div key={label} className="flex items-center gap-4 py-3 border-b border-white/5 last:border-0">
+                    <span className="text-[#E09A30] font-extrabold text-2xl w-14 flex-shrink-0">{num}</span>
+                    <span className="text-slate-400 text-sm">{label}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="bg-[#1A9E4F]/10 border border-[#1A9E4F]/30 rounded-2xl p-6">
+                <p className="text-white font-bold mb-2">Still have questions?</p>
+                <p className="text-slate-400 text-sm mb-4">We&apos;re happy to talk through your specific situation.</p>
+                <a
+                  href="tel:4165318739"
+                  className="inline-flex items-center gap-2 text-[#22C06A] font-semibold text-sm hover:text-white transition-colors"
+                >
+                  <PhoneIcon /> 416-531-TREX
+                </a>
+              </div>
+            </div>
 
           <div className="space-y-3">
             {FAQS.map((faq, idx) => {
@@ -696,6 +732,7 @@ export default function Home() {
               );
             })}
           </div>
+          </div>{/* end grid */}
         </div>
       </section>
 
