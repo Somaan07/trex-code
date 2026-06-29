@@ -91,13 +91,22 @@ function useScrollReveal() {
       setVisible(true);
       return;
     }
+
     function check() {
-      const { top, bottom } = node!.getBoundingClientRect();
+      if (!node) return;
+      const { top, bottom } = node.getBoundingClientRect();
       const h = window.innerHeight;
-      if (top < h * 0.78) setVisible(true);
+      // Reveal if any part of the element is in the viewport
+      if (top < h * 0.92) setVisible(true);
       if (bottom < 0) setVisible(false);
     }
+
+    // Run immediately so elements already in view on load/reload become visible
+    check();
+
+    // Small delay to also catch elements that need a layout paint first
     const t = setTimeout(check, 80);
+
     document.addEventListener("scroll", check, { passive: true });
     window.addEventListener("resize", check, { passive: true });
     return () => {
@@ -115,6 +124,19 @@ function useScrollReveal() {
   };
 
   return { ref, visible, style } as const;
+}
+
+// Helper to get card animation style — only does left/right offset on non-mobile
+function getCardStyle(visible: boolean, idx: number, dir: "left" | "right") {
+  const isMobile = typeof window !== "undefined" && window.innerWidth < 640;
+  const xOffset = isMobile ? 0 : dir === "left" ? -48 : 48;
+  return {
+    opacity: visible ? 1 : 0,
+    transform: visible
+      ? "translate(0,0)"
+      : `translate(${xOffset}px, 24px)`,
+    transition: `opacity 0.7s cubic-bezier(0.22,1,0.36,1) ${idx * 80}ms, transform 0.7s cubic-bezier(0.22,1,0.36,1) ${idx * 80}ms`,
+  };
 }
 
 export default function Home() {
@@ -375,13 +397,7 @@ export default function Home() {
             {SERVICES.map((svc, idx) => (
               <div
                 key={svc.title}
-                style={{
-                  opacity: servicesReveal.visible ? 1 : 0,
-                  transform: servicesReveal.visible
-                    ? "translate(0,0)"
-                    : idx % 2 === 0 ? "translate(-48px, 24px)" : "translate(48px, 24px)",
-                  transition: `opacity 0.7s cubic-bezier(0.22,1,0.36,1) ${idx * 80}ms, transform 0.7s cubic-bezier(0.22,1,0.36,1) ${idx * 80}ms`,
-                }}
+                style={getCardStyle(servicesReveal.visible, idx, idx % 2 === 0 ? "left" : "right")}
                 className="group bg-[#F7F2E7] rounded-2xl shadow-sm hover:shadow-xl border border-[#DDD3BC] hover:border-[#C8882A]/30 p-7 hover:-translate-y-1 hover:transition-transform hover:duration-200"
               >
                 <div className="w-14 h-14 rounded-xl bg-[#0F2040] flex items-center justify-center text-2xl mb-5 group-hover:bg-[#C8882A] transition-colors duration-300">
@@ -394,11 +410,7 @@ export default function Home() {
             ))}
 
             <div
-              style={{
-                opacity: servicesReveal.visible ? 1 : 0,
-                transform: servicesReveal.visible ? "translate(0,0)" : "translate(48px, 24px)",
-                transition: `opacity 0.7s cubic-bezier(0.22,1,0.36,1) ${SERVICES.length * 80}ms, transform 0.7s cubic-bezier(0.22,1,0.36,1) ${SERVICES.length * 80}ms`,
-              }}
+              style={getCardStyle(servicesReveal.visible, SERVICES.length, "right")}
               className="bg-[#0F2040] rounded-2xl p-7 flex flex-col justify-between"
             >
               <div>
@@ -425,13 +437,19 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Quote / Estimate section — now with decorative background matching FAQ */}
       <section
         id="estimate"
         ref={estimateReveal.ref}
-        className="py-20 sm:py-28 bg-[#0B1629]"
+        className="py-20 sm:py-28 bg-[#0B1629] relative overflow-hidden"
         style={estimateReveal.style}
       >
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Decorative circles — same treatment as FAQ */}
+        <div className="absolute top-0 left-0 w-64 h-64 rounded-full bg-[#C8882A]/5 -translate-x-1/2 -translate-y-1/2 pointer-events-none" />
+        <div className="absolute bottom-0 right-0 w-96 h-96 rounded-full bg-[#1A9E4F]/5 translate-x-1/3 translate-y-1/3 pointer-events-none" />
+        <div className="absolute top-1/2 right-0 w-48 h-48 rounded-full bg-[#E09A30]/4 translate-x-1/2 -translate-y-1/2 pointer-events-none" />
+
+        <div className="relative z-10 max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <p className="text-[#C8882A] text-xs font-bold uppercase tracking-[0.2em] mb-3">
               No Obligation
@@ -661,18 +679,18 @@ export default function Home() {
 
           <div className="lg:grid lg:grid-cols-[1fr_2fr] lg:gap-16 lg:items-start">
 
-            {/* Left sidebar — stats + contact nudge */}
+            {/* Left sidebar — unique stats + contact nudge */}
             <div className="hidden lg:flex flex-col gap-6 sticky top-28">
               <div className="bg-[#162B50] rounded-2xl p-6 border border-white/10">
                 <p className="text-[#E09A30] text-xs font-bold uppercase tracking-widest mb-4">By the numbers</p>
                 {[
                   { num: "17+", label: "Years in the GTA" },
-                  { num: "100%", label: "Insured & certified" },
+                  { num: "1 day", label: "Quote turnaround time" },
+                  { num: "500+", label: "Properties serviced" },
                   { num: "2×", label: "Recommended per year" },
-                  { num: "Free", label: "Every estimate" },
                 ].map(({ num, label }) => (
                   <div key={label} className="flex items-center gap-4 py-3 border-b border-white/5 last:border-0">
-                    <span className="text-[#E09A30] font-extrabold text-2xl w-14 flex-shrink-0">{num}</span>
+                    <span className="text-[#E09A30] font-extrabold text-2xl w-16 flex-shrink-0">{num}</span>
                     <span className="text-slate-400 text-sm">{label}</span>
                   </div>
                 ))}
