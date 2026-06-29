@@ -182,7 +182,7 @@ export default function Home() {
         </div>
       </header>
 
-      <section id="home" className="relative h-[85vh] sm:h-[90vh] md:h-screen w-full bg-[#0F2040] overflow-hidden">
+      <section id="home" className="relative h-[85vh] sm:h-screen w-full bg-[#0F2040] overflow-hidden">
         {HERO_IMAGES.map((img, index) => (
           <div
             key={img}
