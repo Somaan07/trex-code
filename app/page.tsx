@@ -415,7 +415,7 @@ export default function Home() {
                       required
                       value={otherText}
                       onChange={(e) => setOtherText(e.target.value)}
-                      placeholder="e.g., Skylight detailing, screen mesh repair..."
+                      placeholder="e.g., Skylight Detailing, Screen Mesh Repair..."
                       className="w-full bg-[#0F2040] text-white placeholder-slate-500 border border-[#C8882A]/50 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#C8882A] transition"
                     />
                   </div>
@@ -546,7 +546,7 @@ export default function Home() {
 
           <div className="border-t border-white/10 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
             <p>
-              © {new Date().getFullYear()} T-Rex Window &amp; Eaves Cleaning INC. All rights reserved.
+              © {new Date().getFullYear()}  T-Rex Window &amp; Eaves Cleaning INC. All rights reserved.
             </p>
             <p className="flex items-center gap-2">
               <ShieldIcon />
