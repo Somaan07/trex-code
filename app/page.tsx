@@ -53,7 +53,7 @@ function useReveal(containerRef: React.RefObject<HTMLElement | null>) {
           }
         });
       },
-      { threshold: 0.12, rootMargin: "0px 0px -40px 0px" }
+      { threshold: 0, rootMargin: "0px 0px -15% 0px" }
     );
 
     targets.forEach((el) => observer.observe(el));
