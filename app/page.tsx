@@ -1,7 +1,7 @@
 "use client";
 
 import { supabase } from './supabase';
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 
 const NAV_LINKS = ["Home", "Services", "Testimonials", "FAQ"];
 
@@ -80,105 +80,65 @@ const FAQS = [
   },
 ];
 
-function useScrollReveal() {
-  const [node, setNode] = useState<HTMLElement | null>(null);
-  const [visible, setVisible] = useState(false);
-  const ref = useCallback((n: HTMLElement | null) => setNode(n), []);
+// CSS injected once — all animation keyframes live here, no scroll dependency
+const ANIMATION_STYLES = `
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(40px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+  @keyframes flashOverlay {
+    0%   { opacity: 0; }
+    20%  { opacity: 0.18; }
+    100% { opacity: 0; }
+  }
 
-  useEffect(() => {
-    if (!node) return;
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      setVisible(true);
-      return;
-    }
+  .anim-fade-up {
+    opacity: 0;
+    animation: fadeUp 0.7s cubic-bezier(0.22,1,0.36,1) forwards;
+  }
+  .anim-fade-in {
+    opacity: 0;
+    animation: fadeIn 0.6s ease forwards;
+  }
+  .nav-flash {
+    pointer-events: none;
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: #0B1629;
+    opacity: 0;
+    animation: flashOverlay 0.5s ease forwards;
+  }
 
-    function check() {
-      if (!node) return;
-      const { top, bottom } = node.getBoundingClientRect();
-      const h = window.innerHeight;
-      // Reveal if any part of the element is in the viewport
-      if (top < h * 0.92) setVisible(true);
-      if (bottom < 0) setVisible(false);
-    }
-
-    // Run immediately so elements already in view on load/reload become visible
-    check();
-
-    // Small delay to also catch elements that need a layout paint first
-    const t = setTimeout(check, 80);
-
-    document.addEventListener("scroll", check, { passive: true });
-    window.addEventListener("resize", check, { passive: true });
-    return () => {
-      clearTimeout(t);
-      document.removeEventListener("scroll", check);
-      window.removeEventListener("resize", check);
-    };
-  }, [node]);
-
-  const style: React.CSSProperties = {
-    opacity: visible ? 1 : 0,
-    transform: visible ? "translateY(0)" : "translateY(60px)",
-    transition: "opacity 0.85s cubic-bezier(0.22,1,0.36,1), transform 0.85s cubic-bezier(0.22,1,0.36,1)",
-    willChange: "opacity, transform",
-  };
-
-  return { ref, visible, style } as const;
-}
-
-// Helper to get card animation style — only does left/right offset on non-mobile
-function getCardStyle(visible: boolean, idx: number, dir: "left" | "right") {
-  const isMobile = typeof window !== "undefined" && window.innerWidth < 640;
-  const xOffset = isMobile ? 0 : dir === "left" ? -48 : 48;
-  return {
-    opacity: visible ? 1 : 0,
-    transform: visible
-      ? "translate(0,0)"
-      : `translate(${xOffset}px, 24px)`,
-    transition: `opacity 0.7s cubic-bezier(0.22,1,0.36,1) ${idx * 80}ms, transform 0.7s cubic-bezier(0.22,1,0.36,1) ${idx * 80}ms`,
-  };
-}
+  @media (prefers-reduced-motion: reduce) {
+    .anim-fade-up, .anim-fade-in { animation: none; opacity: 1; }
+  }
+`;
 
 export default function Home() {
-  const [form, setForm] = useState({
-    name: "",
-    phone: "",
-    email: "",
-    address: "",
-  });
-
+  const [form, setForm] = useState({ name: "", phone: "", email: "", address: "" });
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const [otherText, setOtherText] = useState("");
   const [currentSlide, setCurrentSlide] = useState(0);
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [heroVisible, setHeroVisible] = useState(false);
-
-  const servicesReveal = useScrollReveal();
-  const estimateReveal = useScrollReveal();
-  const testimonialsReveal = useScrollReveal();
-  const faqReveal = useScrollReveal();
-  const footerReveal = useScrollReveal();
-
   const [openFaqs, setOpenFaqs] = useState<Set<number>>(new Set());
+  const [flashKey, setFlashKey] = useState(0);
+  const [showFlash, setShowFlash] = useState(false);
 
-  const toggleFaq = (idx: number) => {
-    setOpenFaqs((prev) => {
-      const next = new Set(prev);
-      if (next.has(idx)) {
-        next.delete(idx);
-      } else {
-        next.add(idx);
-      }
-      return next;
-    });
-  };
-
+  // Inject keyframes once
   useEffect(() => {
-    const frame = requestAnimationFrame(() => setHeroVisible(true));
-    return () => cancelAnimationFrame(frame);
+    const el = document.createElement("style");
+    el.textContent = ANIMATION_STYLES;
+    document.head.appendChild(el);
+    return () => { document.head.removeChild(el); };
   }, []);
 
+  // Hero slideshow
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentSlide((prev) => (prev === HERO_IMAGES.length - 1 ? 0 : prev + 1));
@@ -186,55 +146,63 @@ export default function Home() {
     return () => clearInterval(timer);
   }, []);
 
+  // Smooth scroll with flash transition for nav links
+  function handleNavClick(e: React.MouseEvent<HTMLAnchorElement>, id: string) {
+    e.preventDefault();
+    const target = document.getElementById(id);
+    if (!target) return;
+    // Trigger flash overlay
+    setShowFlash(false);
+    requestAnimationFrame(() => {
+      setFlashKey(k => k + 1);
+      setShowFlash(true);
+      // Small delay so flash starts before scroll
+      setTimeout(() => {
+        target.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 80);
+      // Remove flash div after animation
+      setTimeout(() => setShowFlash(false), 600);
+    });
+  }
+
+  const toggleFaq = (idx: number) => {
+    setOpenFaqs((prev) => {
+      const next = new Set(prev);
+      next.has(idx) ? next.delete(idx) : next.add(idx);
+      return next;
+    });
+  };
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
   const handleCheckboxChange = (service: string) => {
-    if (selectedServices.includes(service)) {
-      setSelectedServices(selectedServices.filter((item) => item !== service));
-    } else {
-      setSelectedServices([...selectedServices, service]);
-    }
+    setSelectedServices(prev =>
+      prev.includes(service) ? prev.filter(s => s !== service) : [...prev, service]
+    );
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (loading) return;
     setLoading(true);
-
     try {
       const processedServices = selectedServices.map((svc) =>
         svc === "Other" ? `Other: ${otherText}` : svc
       );
-      const servicePayload =
-        processedServices.length > 0
-          ? processedServices.join(", ")
-          : "Window Cleaning";
+      const servicePayload = processedServices.length > 0 ? processedServices.join(", ") : "Window Cleaning";
 
-      const { error } = await supabase.from("leads").insert([
-        {
-          name: form.name,
-          phone: form.phone,
-          email: form.email,
-          address: form.address,
-          service_needed: servicePayload,
-          status: "New",
-        },
-      ]);
-
+      const { error } = await supabase.from("leads").insert([{
+        name: form.name, phone: form.phone, email: form.email,
+        address: form.address, service_needed: servicePayload, status: "New",
+      }]);
       if (error) throw error;
 
       await fetch("/api/send-email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: form.name,
-          phone: form.phone,
-          email: form.email,
-          address: form.address,
-          service: servicePayload,
-        }),
+        body: JSON.stringify({ ...form, service: servicePayload }),
       });
 
       setForm({ name: "", phone: "", email: "", address: "" });
@@ -252,14 +220,14 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-[#EAE3D3] font-sans text-[#0B1629]">
 
+      {/* Flash overlay for nav transitions */}
+      {showFlash && <div key={flashKey} className="nav-flash" />}
+
+      {/* ── HEADER ── */}
       <header className="sticky top-0 z-50 bg-[#0B1629] shadow-lg">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-4">
           <div className="flex items-center gap-4 min-w-0">
-            <img
-              src="/trex-logo.png"
-              alt="T-Rex Window Cleaning Logo"
-              className="w-14 h-14 object-contain flex-shrink-0"
-            />
+            <img src="/trex-logo.png" alt="T-Rex Window Cleaning Logo" className="w-14 h-14 object-contain flex-shrink-0" />
             <div className="min-w-0">
               <p className="text-white font-extrabold text-base sm:text-lg leading-tight tracking-tight whitespace-nowrap">
                 T-Rex Window &amp; Eaves
@@ -275,6 +243,7 @@ export default function Home() {
               <a
                 key={link}
                 href={`#${link.toLowerCase()}`}
+                onClick={(e) => handleNavClick(e, link.toLowerCase())}
                 className="text-slate-300 hover:text-[#E09A30] text-sm font-medium tracking-wide transition-colors duration-150"
               >
                 {link}
@@ -299,97 +268,63 @@ export default function Home() {
         </div>
       </header>
 
-      <section
-        id="home"
-        className="relative w-full bg-[#0F2040] overflow-hidden py-20 lg:min-h-screen lg:flex lg:items-center"
-      >
+      {/* ── HERO ── */}
+      <section id="home" className="relative w-full bg-[#0F2040] overflow-hidden py-20 lg:min-h-screen lg:flex lg:items-center">
         {HERO_IMAGES.map((img, index) => (
           <div
             key={img}
-            className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
-              index === currentSlide ? "opacity-100" : "opacity-0"
-            }`}
-            style={{
-              backgroundImage: `url('${img}')`,
-              backgroundPosition: "center",
-              backgroundSize: "cover",
-              backgroundRepeat: "no-repeat",
-            }}
+            className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${index === currentSlide ? "opacity-100" : "opacity-0"}`}
+            style={{ backgroundImage: `url('${img}')`, backgroundPosition: "center", backgroundSize: "cover" }}
           >
             <div className="absolute inset-0 bg-[#0B1629]/75 mix-blend-multiply" />
           </div>
         ))}
-
         <div className="absolute bottom-0 left-0 w-full h-1 bg-[#E09A30] z-20" />
 
-        <div
-          className={`relative z-10 max-w-7xl mx-auto px-4 flex flex-col justify-center w-full transition-all duration-700 ease-out ${
-            heroVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"
-          }`}
-        >
-          <p className="inline-flex items-center gap-2 text-[#E09A30] text-xs font-bold uppercase tracking-[0.2em] mb-5">
+        <div className="relative z-10 max-w-7xl mx-auto px-4 flex flex-col justify-center w-full">
+          <p className="anim-fade-up inline-flex items-center gap-2 text-[#E09A30] text-xs font-bold uppercase tracking-[0.2em] mb-5" style={{ animationDelay: "0ms" }}>
             <span className="w-6 h-px bg-[#C8882A]" />
             Serving the GTA Since 2007
           </p>
-
-          <h1 className="text-white font-extrabold text-4xl sm:text-5xl lg:text-6xl leading-tight max-w-3xl mb-6">
+          <h1 className="anim-fade-up text-white font-extrabold text-4xl sm:text-5xl lg:text-6xl leading-tight max-w-3xl mb-6" style={{ animationDelay: "80ms" }}>
             Premium Residential &amp; Commercial{" "}
             <span className="text-[#E09A30]">Window &amp; Eavestrough</span>{" "}
             Maintenance in the GTA
           </h1>
-
-          <p className="text-slate-300 text-lg sm:text-xl max-w-xl leading-relaxed mb-10">
-            Trusted, family-owned &amp; fully insured service — delivered with
-            care and professionalism since 2007.
+          <p className="anim-fade-up text-slate-300 text-lg sm:text-xl max-w-xl leading-relaxed mb-10" style={{ animationDelay: "160ms" }}>
+            Trusted, family-owned &amp; fully insured service — delivered with care and professionalism since 2007.
           </p>
-
-          <div className="flex flex-col sm:flex-row gap-4 pb-10">
+          <div className="anim-fade-up flex flex-col sm:flex-row gap-4 pb-10" style={{ animationDelay: "240ms" }}>
             <a
               href="#estimate"
+              onClick={(e) => handleNavClick(e, "estimate")}
               className="inline-flex justify-center items-center gap-2 bg-[#1A9E4F] hover:bg-[#22C06A] text-white text-base font-bold px-8 py-4 rounded-xl shadow-lg transition-all duration-200 hover:scale-105"
             >
-              Get a Free Estimate
-              <ArrowIcon />
+              Get a Free Estimate <ArrowIcon />
             </a>
             <a
               href="tel:4165318739"
               className="inline-flex justify-center items-center gap-2 border-2 border-[#C8882A] text-[#E09A30] hover:bg-[#C8882A] hover:text-white text-base font-semibold px-8 py-4 rounded-xl transition-all duration-200"
             >
-              <PhoneIcon />
-              416-531-8739
+              <PhoneIcon /> 416-531-8739
             </a>
           </div>
-
-          <div className="flex flex-wrap gap-6 mt-4">
-            {["Fully Insured", "Family-Owned", "17+ Years Experience", "Free Estimates"].map(
-              (badge) => (
-                <div
-                  key={badge}
-                  className="flex items-center gap-2 text-slate-300 text-sm drop-shadow-sm"
-                >
-                  <CheckIcon />
-                  {badge}
-                </div>
-              )
-            )}
+          <div className="anim-fade-up flex flex-wrap gap-6 mt-4" style={{ animationDelay: "320ms" }}>
+            {["Fully Insured", "Family-Owned", "17+ Years Experience", "Free Estimates"].map((badge) => (
+              <div key={badge} className="flex items-center gap-2 text-slate-300 text-sm">
+                <CheckIcon /> {badge}
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
-      <section
-        id="services"
-        ref={servicesReveal.ref}
-        className="py-20 sm:py-28 bg-[#EAE3D3]"
-        style={servicesReveal.style}
-      >
+      {/* ── SERVICES ── */}
+      <section id="services" className="py-20 sm:py-28 bg-[#EAE3D3]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="mb-14">
-            <p className="text-[#C8882A] text-xs font-bold uppercase tracking-[0.2em] mb-3">
-              What We Do
-            </p>
-            <h2 className="text-[#0B1629] font-extrabold text-3xl sm:text-4xl mb-4">
-              Our Services
-            </h2>
+          <div className="anim-fade-up mb-14" style={{ animationDelay: "0ms" }}>
+            <p className="text-[#C8882A] text-xs font-bold uppercase tracking-[0.2em] mb-3">What We Do</p>
+            <h2 className="text-[#0B1629] font-extrabold text-3xl sm:text-4xl mb-4">Our Services</h2>
             <div className="w-12 h-1 bg-[#C8882A] rounded-full" />
           </div>
 
@@ -397,8 +332,8 @@ export default function Home() {
             {SERVICES.map((svc, idx) => (
               <div
                 key={svc.title}
-                style={getCardStyle(servicesReveal.visible, idx, idx % 2 === 0 ? "left" : "right")}
-                className="group bg-[#F7F2E7] rounded-2xl shadow-sm hover:shadow-xl border border-[#DDD3BC] hover:border-[#C8882A]/30 p-7 hover:-translate-y-1 hover:transition-transform hover:duration-200"
+                className="anim-fade-up group bg-[#F7F2E7] rounded-2xl shadow-sm hover:shadow-xl border border-[#DDD3BC] hover:border-[#C8882A]/30 p-7 hover:-translate-y-1 transition-transform duration-200"
+                style={{ animationDelay: `${idx * 80}ms` }}
               >
                 <div className="w-14 h-14 rounded-xl bg-[#0F2040] flex items-center justify-center text-2xl mb-5 group-hover:bg-[#C8882A] transition-colors duration-300">
                   {svc.icon}
@@ -410,17 +345,13 @@ export default function Home() {
             ))}
 
             <div
-              style={getCardStyle(servicesReveal.visible, SERVICES.length, "right")}
-              className="bg-[#0F2040] rounded-2xl p-7 flex flex-col justify-between"
+              className="anim-fade-up bg-[#0F2040] rounded-2xl p-7 flex flex-col justify-between"
+              style={{ animationDelay: `${SERVICES.length * 80}ms` }}
             >
               <div>
-                <p className="text-[#E09A30] text-xs font-bold uppercase tracking-widest mb-3">
-                  Not Listed?
-                </p>
+                <p className="text-[#E09A30] text-xs font-bold uppercase tracking-widest mb-3">Not Listed?</p>
                 <h3 className="text-white font-bold text-lg mb-3 leading-snug">
-                  Have a unique job?
-                  <br />
-                  We&apos;ll take a look.
+                  Have a unique job?<br />We&apos;ll take a look.
                 </h3>
                 <p className="text-slate-400 text-sm leading-relaxed">
                   Call us or send a quote request and we&apos;ll let you know what we can do.
@@ -428,6 +359,7 @@ export default function Home() {
               </div>
               <a
                 href="#estimate"
+                onClick={(e) => handleNavClick(e, "estimate")}
                 className="mt-6 inline-flex items-center gap-2 text-[#22C06A] font-semibold text-sm hover:text-white transition-colors"
               >
                 Request a Quote <ArrowIcon />
@@ -437,84 +369,43 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Quote / Estimate section — now with decorative background matching FAQ */}
-      <section
-        id="estimate"
-        ref={estimateReveal.ref}
-        className="py-20 sm:py-28 bg-[#0B1629] relative overflow-hidden"
-        style={estimateReveal.style}
-      >
-        {/* Decorative circles — same treatment as FAQ */}
+      {/* ── ESTIMATE ── */}
+      <section id="estimate" className="py-20 sm:py-28 bg-[#0B1629] relative overflow-hidden">
         <div className="absolute top-0 left-0 w-64 h-64 rounded-full bg-[#C8882A]/5 -translate-x-1/2 -translate-y-1/2 pointer-events-none" />
         <div className="absolute bottom-0 right-0 w-96 h-96 rounded-full bg-[#1A9E4F]/5 translate-x-1/3 translate-y-1/3 pointer-events-none" />
         <div className="absolute top-1/2 right-0 w-48 h-48 rounded-full bg-[#E09A30]/4 translate-x-1/2 -translate-y-1/2 pointer-events-none" />
 
         <div className="relative z-10 max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <p className="text-[#C8882A] text-xs font-bold uppercase tracking-[0.2em] mb-3">
-              No Obligation
-            </p>
-            <h2 className="text-white font-extrabold text-3xl sm:text-4xl mb-4">
-              Get a Free Quote
-            </h2>
+          <div className="anim-fade-up text-center mb-12" style={{ animationDelay: "0ms" }}>
+            <p className="text-[#C8882A] text-xs font-bold uppercase tracking-[0.2em] mb-3">No Obligation</p>
+            <h2 className="text-white font-extrabold text-3xl sm:text-4xl mb-4">Get a Free Quote</h2>
             <p className="text-slate-400 text-base max-w-md mx-auto">
               Fill in the form below and we&apos;ll get back to you within one business day.
             </p>
           </div>
 
           {submitted ? (
-            <div className="bg-[#162B50] rounded-2xl border border-[#1A9E4F]/40 p-12 text-center">
+            <div className="anim-fade-in bg-[#162B50] rounded-2xl border border-[#1A9E4F]/40 p-12 text-center">
               <div className="w-16 h-16 rounded-full bg-[#1A9E4F]/20 flex items-center justify-center mx-auto mb-5">
                 <CheckIcon large />
               </div>
               <h3 className="text-white font-bold text-2xl mb-2">Request Received!</h3>
-              <p className="text-slate-400">
-                Thanks for reaching out. We&apos;ll be in touch at the contact info you provided.
-              </p>
+              <p className="text-slate-400">Thanks for reaching out. We&apos;ll be in touch at the contact info you provided.</p>
             </div>
           ) : (
             <form
               onSubmit={handleSubmit}
-              className="bg-[#162B50] rounded-2xl border border-white/10 p-8 sm:p-10 shadow-2xl"
+              className="anim-fade-up bg-[#162B50] rounded-2xl border border-white/10 p-8 sm:p-10 shadow-2xl"
+              style={{ animationDelay: "80ms" }}
             >
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                <FormField
-                  label="Full Name"
-                  name="name"
-                  type="text"
-                  placeholder="Jane Smith"
-                  value={form.name}
-                  onChange={handleChange}
-                />
-                <FormField
-                  label="Phone Number"
-                  name="phone"
-                  type="tel"
-                  placeholder="416-555-0100"
-                  value={form.phone}
-                  onChange={handleChange}
-                />
-                <FormField
-                  label="Email Address"
-                  name="email"
-                  type="email"
-                  placeholder="jane@example.com"
-                  value={form.email}
-                  onChange={handleChange}
-                />
-                <FormField
-                  label="Property Address"
-                  name="address"
-                  type="text"
-                  placeholder="123 Main St, Toronto, ON"
-                  value={form.address}
-                  onChange={handleChange}
-                />
+                <FormField label="Full Name" name="name" type="text" placeholder="Jane Smith" value={form.name} onChange={handleChange} />
+                <FormField label="Phone Number" name="phone" type="tel" placeholder="416-555-0100" value={form.phone} onChange={handleChange} />
+                <FormField label="Email Address" name="email" type="email" placeholder="jane@example.com" value={form.email} onChange={handleChange} />
+                <FormField label="Property Address" name="address" type="text" placeholder="123 Main St, Toronto, ON" value={form.address} onChange={handleChange} />
 
                 <div className="sm:col-span-2 mt-2">
-                  <label className="block text-slate-300 text-sm font-semibold mb-3">
-                    Services Needed (Select all that apply)
-                  </label>
+                  <label className="block text-slate-300 text-sm font-semibold mb-3">Services Needed (Select all that apply)</label>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {SERVICE_OPTIONS.map((opt) => (
                       <label
@@ -534,7 +425,6 @@ export default function Home() {
                         <span className="text-sm font-medium">{opt}</span>
                       </label>
                     ))}
-
                     <label
                       className={`flex items-center space-x-3 p-3.5 rounded-xl border cursor-pointer transition-all select-none ${
                         selectedServices.includes("Other")
@@ -554,10 +444,8 @@ export default function Home() {
                 </div>
 
                 {selectedServices.includes("Other") && (
-                  <div className="sm:col-span-2 transition-all duration-300">
-                    <label className="block text-slate-300 text-sm font-semibold mb-1.5">
-                      Specify Custom Requirements
-                    </label>
+                  <div className="sm:col-span-2">
+                    <label className="block text-slate-300 text-sm font-semibold mb-1.5">Specify Custom Requirements</label>
                     <input
                       type="text"
                       required
@@ -577,74 +465,36 @@ export default function Home() {
               >
                 {loading ? "Submitting..." : "Submit Quote Request"}
               </button>
-
-              <p className="text-slate-500 text-xs text-center mt-4">
-                We respect your privacy. Your information is never shared.
-              </p>
+              <p className="text-slate-500 text-xs text-center mt-4">We respect your privacy. Your information is never shared.</p>
             </form>
           )}
         </div>
       </section>
 
-      <section
-        id="testimonials"
-        ref={testimonialsReveal.ref}
-        className="py-20 sm:py-28 bg-[#EAE3D3]"
-        style={testimonialsReveal.style}
-      >
+      {/* ── TESTIMONIALS ── */}
+      <section id="testimonials" className="py-20 sm:py-28 bg-[#EAE3D3]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="mb-14">
-            <p className="text-[#C8882A] text-xs font-bold uppercase tracking-[0.2em] mb-3">
-              What Our Clients Say
-            </p>
-            <h2 className="text-[#0B1629] font-extrabold text-3xl sm:text-4xl mb-4">
-              Testimonials
-            </h2>
+          <div className="anim-fade-up mb-14" style={{ animationDelay: "0ms" }}>
+            <p className="text-[#C8882A] text-xs font-bold uppercase tracking-[0.2em] mb-3">What Our Clients Say</p>
+            <h2 className="text-[#0B1629] font-extrabold text-3xl sm:text-4xl mb-4">Testimonials</h2>
             <div className="w-12 h-1 bg-[#C8882A] rounded-full" />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {[
-              {
-                name: "Sarah M.",
-                location: "North York",
-                quote:
-                  "T-Rex has been cleaning our windows for three years. Punctual, professional, and the results are always spotless.",
-              },
-              {
-                name: "David K.",
-                location: "Etobicoke",
-                quote:
-                  "They saved us from a very costly water damage situation — our eavestroughs were completely clogged. Highly recommend.",
-              },
-              {
-                name: "Linda T.",
-                location: "Scarborough",
-                quote:
-                  "Friendly team, fair price, and they even cleaned up after themselves. Will definitely call them again in the fall.",
-              },
+              { name: "Sarah M.", location: "North York", quote: "T-Rex has been cleaning our windows for three years. Punctual, professional, and the results are always spotless." },
+              { name: "David K.", location: "Etobicoke", quote: "They saved us from a very costly water damage situation — our eavestroughs were completely clogged. Highly recommend." },
+              { name: "Linda T.", location: "Scarborough", quote: "Friendly team, fair price, and they even cleaned up after themselves. Will definitely call them again in the fall." },
             ].map((t, idx) => (
               <div
                 key={t.name}
-                style={{
-                  opacity: testimonialsReveal.visible ? 1 : 0,
-                  transform: testimonialsReveal.visible ? "translateY(0)" : "translateY(48px)",
-                  transition: `opacity 0.7s cubic-bezier(0.22,1,0.36,1) ${idx * 90}ms, transform 0.7s cubic-bezier(0.22,1,0.36,1) ${idx * 90}ms`,
-                }}
-                className="bg-[#F7F2E7] rounded-2xl border border-[#DDD3BC] shadow-sm p-7"
+                className="anim-fade-up bg-[#F7F2E7] rounded-2xl border border-[#DDD3BC] shadow-sm p-7"
+                style={{ animationDelay: `${idx * 90}ms` }}
               >
-                <div className="flex gap-0.5 mb-4">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <StarIcon key={i} />
-                  ))}
-                </div>
-                <p className="text-slate-600 text-sm leading-relaxed mb-5 italic">
-                  &ldquo;{t.quote}&rdquo;
-                </p>
+                <div className="flex gap-0.5 mb-4">{Array.from({ length: 5 }).map((_, i) => <StarIcon key={i} />)}</div>
+                <p className="text-slate-600 text-sm leading-relaxed mb-5 italic">&ldquo;{t.quote}&rdquo;</p>
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full bg-[#0F2040] flex items-center justify-center text-white text-xs font-bold">
-                    {t.name[0]}
-                  </div>
+                  <div className="w-9 h-9 rounded-full bg-[#0F2040] flex items-center justify-center text-white text-xs font-bold">{t.name[0]}</div>
                   <div>
                     <p className="text-[#0B1629] font-semibold text-sm">{t.name}</p>
                     <p className="text-slate-400 text-xs">{t.location}</p>
@@ -656,38 +506,27 @@ export default function Home() {
         </div>
       </section>
 
-      <section
-        id="faq"
-        ref={faqReveal.ref}
-        className="py-20 sm:py-28 bg-[#0F2040] relative overflow-hidden"
-        style={faqReveal.style}
-      >
-        {/* Background decorative elements */}
+      {/* ── FAQ ── */}
+      <section id="faq" className="py-20 sm:py-28 bg-[#0F2040] relative overflow-hidden">
         <div className="absolute top-0 left-0 w-64 h-64 rounded-full bg-[#C8882A]/5 -translate-x-1/2 -translate-y-1/2 pointer-events-none" />
         <div className="absolute bottom-0 right-0 w-96 h-96 rounded-full bg-[#1A9E4F]/5 translate-x-1/3 translate-y-1/3 pointer-events-none" />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="mb-14 text-center">
-            <p className="text-[#E09A30] text-xs font-bold uppercase tracking-[0.2em] mb-3">
-              Common Questions
-            </p>
-            <h2 className="text-white font-extrabold text-3xl sm:text-4xl mb-4">
-              Frequently Asked Questions
-            </h2>
+          <div className="anim-fade-up mb-14 text-center" style={{ animationDelay: "0ms" }}>
+            <p className="text-[#E09A30] text-xs font-bold uppercase tracking-[0.2em] mb-3">Common Questions</p>
+            <h2 className="text-white font-extrabold text-3xl sm:text-4xl mb-4">Frequently Asked Questions</h2>
             <div className="w-12 h-1 bg-[#C8882A] rounded-full mx-auto" />
           </div>
 
           <div className="lg:grid lg:grid-cols-[1fr_2fr] lg:gap-16 lg:items-start">
-
-            {/* Left sidebar — unique stats + contact nudge */}
             <div className="hidden lg:flex flex-col gap-6 sticky top-28">
-              <div className="bg-[#162B50] rounded-2xl p-6 border border-white/10">
+              <div className="anim-fade-up bg-[#162B50] rounded-2xl p-6 border border-white/10" style={{ animationDelay: "80ms" }}>
                 <p className="text-[#E09A30] text-xs font-bold uppercase tracking-widest mb-4">By the numbers</p>
                 {[
-                  { num: "17+", label: "Years in the GTA" },
+                  { num: "17+",   label: "Years in the GTA" },
                   { num: "1 day", label: "Quote turnaround time" },
-                  { num: "500+", label: "Properties serviced" },
-                  { num: "2×", label: "Recommended per year" },
+                  { num: "500+",  label: "Properties serviced" },
+                  { num: "2×",    label: "Recommended per year" },
                 ].map(({ num, label }) => (
                   <div key={label} className="flex items-center gap-4 py-3 border-b border-white/5 last:border-0">
                     <span className="text-[#E09A30] font-extrabold text-2xl w-16 flex-shrink-0">{num}</span>
@@ -695,135 +534,81 @@ export default function Home() {
                   </div>
                 ))}
               </div>
-              <div className="bg-[#1A9E4F]/10 border border-[#1A9E4F]/30 rounded-2xl p-6">
+              <div className="anim-fade-up bg-[#1A9E4F]/10 border border-[#1A9E4F]/30 rounded-2xl p-6" style={{ animationDelay: "160ms" }}>
                 <p className="text-white font-bold mb-2">Still have questions?</p>
                 <p className="text-slate-400 text-sm mb-4">We&apos;re happy to talk through your specific situation.</p>
-                <a
-                  href="tel:4165318739"
-                  className="inline-flex items-center gap-2 text-[#22C06A] font-semibold text-sm hover:text-white transition-colors"
-                >
+                <a href="tel:4165318739" className="inline-flex items-center gap-2 text-[#22C06A] font-semibold text-sm hover:text-white transition-colors">
                   <PhoneIcon /> 416-531-TREX
                 </a>
               </div>
             </div>
 
-          <div className="space-y-3">
-            {FAQS.map((faq, idx) => {
-              const isOpen = openFaqs.has(idx);
-              return (
-                <div
-                  key={faq.question}
-                  style={{
-                    opacity: faqReveal.visible ? 1 : 0,
-                    transform: faqReveal.visible ? "translateY(0)" : "translateY(32px)",
-                    transition: `opacity 0.6s cubic-bezier(0.22,1,0.36,1) ${idx * 80}ms, transform 0.6s cubic-bezier(0.22,1,0.36,1) ${idx * 80}ms`,
-                  }}
-                  className="rounded-xl border border-white/10 bg-[#162B50] overflow-hidden"
-                >
-                  <button
-                    type="button"
-                    onClick={() => toggleFaq(idx)}
-                    aria-expanded={isOpen}
-                    className="w-full flex items-center justify-between gap-4 text-left px-6 py-5 text-white font-semibold text-base hover:text-[#E09A30] transition-colors"
-                  >
-                    {faq.question}
-                    <span
-                      className={`flex-shrink-0 text-[#E09A30] text-2xl leading-none transition-transform duration-300 ${
-                        isOpen ? "rotate-45" : "rotate-0"
-                      }`}
-                    >
-                      +
-                    </span>
-                  </button>
+            <div className="space-y-3">
+              {FAQS.map((faq, idx) => {
+                const isOpen = openFaqs.has(idx);
+                return (
                   <div
-                    className={`grid transition-all duration-300 ease-out ${
-                      isOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
-                    }`}
+                    key={faq.question}
+                    className="anim-fade-up rounded-xl border border-white/10 bg-[#162B50] overflow-hidden"
+                    style={{ animationDelay: `${idx * 60}ms` }}
                   >
-                    <div className="overflow-hidden">
-                      <p className="text-slate-300 text-sm leading-relaxed px-6 pb-5">
-                        {faq.answer}
-                      </p>
+                    <button
+                      type="button"
+                      onClick={() => toggleFaq(idx)}
+                      aria-expanded={isOpen}
+                      className="w-full flex items-center justify-between gap-4 text-left px-6 py-5 text-white font-semibold text-base hover:text-[#E09A30] transition-colors"
+                    >
+                      {faq.question}
+                      <span className={`flex-shrink-0 text-[#E09A30] text-2xl leading-none transition-transform duration-300 ${isOpen ? "rotate-45" : "rotate-0"}`}>
+                        +
+                      </span>
+                    </button>
+                    <div className={`grid transition-all duration-300 ease-out ${isOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}>
+                      <div className="overflow-hidden">
+                        <p className="text-slate-300 text-sm leading-relaxed px-6 pb-5">{faq.answer}</p>
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
-          </div>{/* end grid */}
         </div>
       </section>
 
-      <footer
-        ref={footerReveal.ref}
-        className="bg-[#0B1629] border-t border-white/10"
-        style={footerReveal.style}
-      >
+      {/* ── FOOTER ── */}
+      <footer className="anim-fade-in bg-[#0B1629] border-t border-white/10" style={{ animationDelay: "0ms" }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-10 mb-10">
             <div>
-              <p className="text-white font-extrabold text-base mb-1">
-                T-Rex Window &amp; Eaves Cleaning INC.
-              </p>
-              <p className="text-[#C8882A] text-xs font-semibold uppercase tracking-widest mb-4">
-                Est. 2007
-              </p>
+              <p className="text-white font-extrabold text-base mb-1">T-Rex Window &amp; Eaves Cleaning INC.</p>
+              <p className="text-[#C8882A] text-xs font-semibold uppercase tracking-widest mb-4">Est. 2007</p>
               <p className="text-slate-500 text-sm leading-relaxed">
-                Family-owned, fully insured exterior cleaning services across Toronto and the
-                Greater Toronto Area.
+                Family-owned, fully insured exterior cleaning services across Toronto and the Greater Toronto Area.
               </p>
             </div>
-
             <div>
-              <p className="text-slate-300 font-bold text-sm uppercase tracking-wide mb-4">
-                Contact
-              </p>
+              <p className="text-slate-300 font-bold text-sm uppercase tracking-wide mb-4">Contact</p>
               <ul className="space-y-2 text-sm text-slate-400">
-                <li>
-                  <a
-                    href="tel:4165318739"
-                    className="hover:text-[#E09A30] transition-colors"
-                  >
-                    📞 416-531-TREX (8739)
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="mailto:info@trexcanada.com"
-                    className="hover:text-[#E09A30] transition-colors"
-                  >
-                    ✉️ info@trexcanada.com
-                  </a>
-                </li>
+                <li><a href="tel:4165318739" className="hover:text-[#E09A30] transition-colors">📞 416-531-TREX (8739)</a></li>
+                <li><a href="mailto:info@trexcanada.com" className="hover:text-[#E09A30] transition-colors">✉️ info@trexcanada.com</a></li>
               </ul>
             </div>
-
             <div>
-              <p className="text-slate-300 font-bold text-sm uppercase tracking-wide mb-4">
-                Service Areas
-              </p>
+              <p className="text-slate-300 font-bold text-sm uppercase tracking-wide mb-4">Service Areas</p>
               <ul className="space-y-1 text-sm text-slate-400">
-                {["Toronto", "North York", "Scarborough", "Etobicoke", "Surrounding GTA"].map(
-                  (area) => (
-                    <li key={area} className="flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#C8882A]" />
-                      {area}
-                    </li>
-                  )
-                )}
+                {["Toronto", "North York", "Scarborough", "Etobicoke", "Surrounding GTA"].map((area) => (
+                  <li key={area} className="flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#C8882A]" />
+                    {area}
+                  </li>
+                ))}
               </ul>
             </div>
           </div>
-
           <div className="border-t border-white/10 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
-            <p>
-              © {new Date().getFullYear()}&nbsp;T-Rex Window &amp; Eaves Cleaning INC. All
-              rights reserved.
-            </p>
-            <p className="flex items-center gap-2">
-              <ShieldIcon />
-              Fully Insured · Proudly Serving the GTA
-            </p>
+            <p>© {new Date().getFullYear()}&nbsp;T-Rex Window &amp; Eaves Cleaning INC. All rights reserved.</p>
+            <p className="flex items-center gap-2"><ShieldIcon /> Fully Insured · Proudly Serving the GTA</p>
           </div>
         </div>
       </footer>
@@ -831,30 +616,15 @@ export default function Home() {
   );
 }
 
-function FormField({
-  label,
-  name,
-  type,
-  placeholder,
-  value,
-  onChange,
-}: {
-  label: string;
-  name: string;
-  type: string;
-  placeholder: string;
-  value: string;
-  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+function FormField({ label, name, type, placeholder, value, onChange }: {
+  label: string; name: string; type: string; placeholder: string;
+  value: string; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }) {
   return (
     <div>
       <label className="block text-slate-300 text-sm font-semibold mb-1.5">{label}</label>
       <input
-        type={type}
-        name={name}
-        placeholder={placeholder}
-        value={value}
-        onChange={onChange}
+        type={type} name={name} placeholder={placeholder} value={value} onChange={onChange}
         className="w-full bg-[#0F2040] text-white placeholder-slate-500 border border-white/15 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#C8882A] transition"
       />
     </div>
@@ -863,49 +633,23 @@ function FormField({
 
 function PhoneIcon() {
   return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      className="w-4 h-4"
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-      strokeWidth={2}
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
-      />
+    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
     </svg>
   );
 }
 
 function ArrowIcon() {
   return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      className="w-4 h-4"
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-      strokeWidth={2.5}
-    >
+    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
     </svg>
   );
 }
 
 function CheckIcon({ large = false }: { large?: boolean }) {
-  const size = large ? "w-8 h-8" : "w-4 h-4";
   return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      className={`${size} text-[#22C06A]`}
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-      strokeWidth={2.5}
-    >
+    <svg xmlns="http://www.w3.org/2000/svg" className={`${large ? "w-8 h-8" : "w-4 h-4"} text-[#22C06A]`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
     </svg>
   );
@@ -913,12 +657,7 @@ function CheckIcon({ large = false }: { large?: boolean }) {
 
 function StarIcon() {
   return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      className="w-4 h-4 text-[#E09A30]"
-      viewBox="0 0 20 20"
-      fill="currentColor"
-    >
+    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-[#E09A30]" viewBox="0 0 20 20" fill="currentColor">
       <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
     </svg>
   );
@@ -926,19 +665,8 @@ function StarIcon() {
 
 function ShieldIcon() {
   return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      className="w-3.5 h-3.5 text-[#22C06A]"
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-      strokeWidth={2}
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
-      />
+    <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 text-[#22C06A]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
     </svg>
   );
 }
