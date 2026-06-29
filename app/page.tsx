@@ -546,7 +546,7 @@ export default function Home() {
 
           <div className="border-t border-white/10 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
             <p>
-              © {new Date().getFullYear()}  T-Rex Window &amp; Eaves Cleaning INC. All rights reserved.
+             © {new Date().getFullYear()}&nbsp;T-Rex Window &amp; Eaves Cleaning INC. All rights reserved.
             </p>
             <p className="flex items-center gap-2">
               <ShieldIcon />
