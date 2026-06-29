@@ -94,18 +94,27 @@ function useScrollReveal() {
     function check() {
       const { top, bottom } = node!.getBoundingClientRect();
       const h = window.innerHeight;
-      if (top < h * 0.82) setVisible(true);
+      if (top < h * 0.92) setVisible(true);
       if (bottom < 0) setVisible(false);
     }
+    const t = setTimeout(check, 80);
     document.addEventListener("scroll", check, { passive: true });
     window.addEventListener("resize", check, { passive: true });
     return () => {
+      clearTimeout(t);
       document.removeEventListener("scroll", check);
       window.removeEventListener("resize", check);
     };
   }, [node]);
 
-  return { ref, visible } as const;
+  const style: React.CSSProperties = {
+    opacity: visible ? 1 : 0,
+    transform: visible ? "translateY(0)" : "translateY(60px)",
+    transition: "opacity 0.85s cubic-bezier(0.22,1,0.36,1), transform 0.85s cubic-bezier(0.22,1,0.36,1)",
+    willChange: "opacity, transform",
+  };
+
+  return { ref, visible, style } as const;
 }
 
 export default function Home() {
@@ -348,9 +357,8 @@ export default function Home() {
       <section
         id="services"
         ref={servicesReveal.ref}
-        className={`py-20 sm:py-28 bg-[#EAE3D3] transition-all duration-[900ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${
-          servicesReveal.visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-20"
-        }`}
+        className="py-20 sm:py-28 bg-[#EAE3D3]"
+        style={servicesReveal.style}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="mb-14">
@@ -368,13 +376,11 @@ export default function Home() {
               <div
                 key={svc.title}
                 style={{
-                  transitionDelay: servicesReveal.visible ? `${idx * 90}ms` : "0ms",
+                  opacity: servicesReveal.visible ? 1 : 0,
+                  transform: servicesReveal.visible ? "translateY(0)" : "translateY(48px)",
+                  transition: `opacity 0.7s cubic-bezier(0.22,1,0.36,1) ${idx * 90}ms, transform 0.7s cubic-bezier(0.22,1,0.36,1) ${idx * 90}ms`,
                 }}
-                className={`group bg-[#F7F2E7] rounded-2xl shadow-sm hover:shadow-xl border border-[#DDD3BC] hover:border-[#C8882A]/30 p-7 transition-all duration-500 ease-out hover:-translate-y-1 ${
-                  servicesReveal.visible
-                    ? "opacity-100 translate-y-0"
-                    : "opacity-0 translate-y-14"
-                }`}
+                className="group bg-[#F7F2E7] rounded-2xl shadow-sm hover:shadow-xl border border-[#DDD3BC] hover:border-[#C8882A]/30 p-7 hover:-translate-y-1 hover:transition-transform hover:duration-200"
               >
                 <div className="w-14 h-14 rounded-xl bg-[#0F2040] flex items-center justify-center text-2xl mb-5 group-hover:bg-[#C8882A] transition-colors duration-300">
                   {svc.icon}
@@ -387,15 +393,11 @@ export default function Home() {
 
             <div
               style={{
-                transitionDelay: servicesReveal.visible
-                  ? `${SERVICES.length * 90}ms`
-                  : "0ms",
+                opacity: servicesReveal.visible ? 1 : 0,
+                transform: servicesReveal.visible ? "translateY(0)" : "translateY(48px)",
+                transition: `opacity 0.7s cubic-bezier(0.22,1,0.36,1) ${SERVICES.length * 90}ms, transform 0.7s cubic-bezier(0.22,1,0.36,1) ${SERVICES.length * 90}ms`,
               }}
-              className={`bg-[#0F2040] rounded-2xl p-7 flex flex-col justify-between transition-all duration-500 ease-out ${
-                servicesReveal.visible
-                  ? "opacity-100 translate-y-0"
-                  : "opacity-0 translate-y-14"
-              }`}
+              className="bg-[#0F2040] rounded-2xl p-7 flex flex-col justify-between"
             >
               <div>
                 <p className="text-[#E09A30] text-xs font-bold uppercase tracking-widest mb-3">
@@ -424,9 +426,8 @@ export default function Home() {
       <section
         id="estimate"
         ref={estimateReveal.ref}
-        className={`py-20 sm:py-28 bg-[#0B1629] transition-all duration-[900ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${
-          estimateReveal.visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-20"
-        }`}
+        className="py-20 sm:py-28 bg-[#0B1629]"
+        style={estimateReveal.style}
       >
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
@@ -568,9 +569,8 @@ export default function Home() {
       <section
         id="testimonials"
         ref={testimonialsReveal.ref}
-        className={`py-20 sm:py-28 bg-[#EAE3D3] transition-all duration-[900ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${
-          testimonialsReveal.visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-20"
-        }`}
+        className="py-20 sm:py-28 bg-[#EAE3D3]"
+        style={testimonialsReveal.style}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="mb-14">
@@ -607,13 +607,11 @@ export default function Home() {
               <div
                 key={t.name}
                 style={{
-                  transitionDelay: testimonialsReveal.visible ? `${idx * 90}ms` : "0ms",
+                  opacity: testimonialsReveal.visible ? 1 : 0,
+                  transform: testimonialsReveal.visible ? "translateY(0)" : "translateY(48px)",
+                  transition: `opacity 0.7s cubic-bezier(0.22,1,0.36,1) ${idx * 90}ms, transform 0.7s cubic-bezier(0.22,1,0.36,1) ${idx * 90}ms`,
                 }}
-                className={`bg-[#F7F2E7] rounded-2xl border border-[#DDD3BC] shadow-sm p-7 transition-all duration-500 ease-out ${
-                  testimonialsReveal.visible
-                    ? "opacity-100 translate-y-0"
-                    : "opacity-0 translate-y-14"
-                }`}
+                className="bg-[#F7F2E7] rounded-2xl border border-[#DDD3BC] shadow-sm p-7"
               >
                 <div className="flex gap-0.5 mb-4">
                   {Array.from({ length: 5 }).map((_, i) => (
@@ -641,9 +639,8 @@ export default function Home() {
       <section
         id="faq"
         ref={faqReveal.ref}
-        className={`py-20 sm:py-28 bg-[#0F2040] transition-all duration-[900ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${
-          faqReveal.visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-20"
-        }`}
+        className="py-20 sm:py-28 bg-[#0F2040]"
+        style={faqReveal.style}
       >
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="mb-14 text-center">
@@ -663,13 +660,11 @@ export default function Home() {
                 <div
                   key={faq.question}
                   style={{
-                    transitionDelay: faqReveal.visible ? `${idx * 80}ms` : "0ms",
+                    opacity: faqReveal.visible ? 1 : 0,
+                    transform: faqReveal.visible ? "translateY(0)" : "translateY(32px)",
+                    transition: `opacity 0.6s cubic-bezier(0.22,1,0.36,1) ${idx * 80}ms, transform 0.6s cubic-bezier(0.22,1,0.36,1) ${idx * 80}ms`,
                   }}
-                  className={`rounded-xl border border-white/10 bg-[#162B50] overflow-hidden transition-all duration-500 ease-out ${
-                    faqReveal.visible
-                      ? "opacity-100 translate-y-0"
-                      : "opacity-0 translate-y-10"
-                  }`}
+                  className="rounded-xl border border-white/10 bg-[#162B50] overflow-hidden"
                 >
                   <button
                     type="button"
@@ -706,9 +701,8 @@ export default function Home() {
 
       <footer
         ref={footerReveal.ref}
-        className={`bg-[#0B1629] border-t border-white/10 transition-all duration-[900ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${
-          footerReveal.visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-20"
-        }`}
+        className="bg-[#0B1629] border-t border-white/10"
+        style={footerReveal.style}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-10 mb-10">
