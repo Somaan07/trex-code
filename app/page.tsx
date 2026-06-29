@@ -1,7 +1,7 @@
 "use client";
 
 import { supabase } from './supabase';
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 
 const NAV_LINKS = ["Home", "Services", "Testimonials", "FAQ"];
 
@@ -32,35 +32,6 @@ const FAQS = [
   { question: "Can I set up a recurring cleaning schedule?", answer: "Definitely. Many of our clients book us automatically for spring and fall visits every year so they never have to think about it. Just mention it on your quote request and we'll set it up." },
 ];
 
-// One hook — attaches IntersectionObserver to a container, adds .is-visible to
-// every child that has data-reveal. Fires correctly on load AND after nav jumps.
-function useReveal(containerRef: React.RefObject<HTMLElement | null>) {
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-
-    const targets = Array.from(container.querySelectorAll<HTMLElement>("[data-reveal]"));
-    if (targets.length === 0) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            const el = entry.target as HTMLElement;
-            const delay = el.dataset.delay ?? "0";
-            setTimeout(() => el.classList.add("is-visible"), Number(delay));
-            observer.unobserve(el);
-          }
-        });
-      },
-      { threshold: 0, rootMargin: "0px 0px -15% 0px" }
-    );
-
-    targets.forEach((el) => observer.observe(el));
-    return () => observer.disconnect();
-  }, [containerRef]);
-}
-
 // Smooth scroll with a brief dark flash between sections
 function useNavScroll() {
   const [flashing, setFlashing] = useState(false);
@@ -89,21 +60,35 @@ export default function Home() {
   const [openFaqs, setOpenFaqs] = useState<Set<number>>(new Set());
   const [heroReady, setHeroReady] = useState(false);
 
-  const heroRef      = useRef<HTMLElement>(null);
-  const servicesRef  = useRef<HTMLElement>(null);
-  const estimateRef  = useRef<HTMLElement>(null);
-  const testimRef    = useRef<HTMLElement>(null);
-  const faqRef       = useRef<HTMLElement>(null);
-  const footerRef    = useRef<HTMLElement>(null);
-
-  useReveal(heroRef);
-  useReveal(servicesRef);
-  useReveal(estimateRef);
-  useReveal(testimRef);
-  useReveal(faqRef);
-  useReveal(footerRef);
-
   const { flashing, scrollTo } = useNavScroll();
+
+  // Single, global Intersection Observer for all animations
+  useEffect(() => {
+    const targets = document.querySelectorAll<HTMLElement>("[data-reveal]");
+    if (targets.length === 0) return;
+
+    const observer = new IntersectionObserver(
+      (entries, obs) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const el = entry.target as HTMLElement;
+            const delay = el.dataset.delay ?? "0";
+            
+            setTimeout(() => el.classList.add("is-visible"), Number(delay));
+            obs.unobserve(el);
+          }
+        });
+      },
+      { 
+        threshold: 0.05, 
+        rootMargin: "0px" 
+      }
+    );
+
+    targets.forEach((el) => observer.observe(el));
+
+    return () => observer.disconnect();
+  }, []);
 
   // Hero entrance — just a one-shot fade on mount, no scroll needed
   useEffect(() => {
@@ -111,6 +96,7 @@ export default function Home() {
     return () => cancelAnimationFrame(id);
   }, []);
 
+  // Hero slideshow interval
   useEffect(() => {
     const t = setInterval(() => setCurrentSlide(p => (p + 1) % HERO_IMAGES.length), 5000);
     return () => clearInterval(t);
@@ -210,7 +196,7 @@ export default function Home() {
         </header>
 
         {/* ── HERO ── */}
-        <section id="home" ref={heroRef} className="relative w-full bg-[#0F2040] overflow-hidden py-20 lg:min-h-screen lg:flex lg:items-center">
+        <section id="home" className="relative w-full bg-[#0F2040] overflow-hidden py-20 lg:min-h-screen lg:flex lg:items-center">
           {HERO_IMAGES.map((img, i) => (
             <div key={img} className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${i === currentSlide ? "opacity-100" : "opacity-0"}`}
               style={{ backgroundImage: `url('${img}')`, backgroundPosition: "center", backgroundSize: "cover" }}>
@@ -251,7 +237,7 @@ export default function Home() {
         </section>
 
         {/* ── SERVICES ── */}
-        <section id="services" ref={servicesRef} className="py-20 sm:py-28 bg-[#EAE3D3]">
+        <section id="services" className="py-20 sm:py-28 bg-[#EAE3D3]">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div data-reveal className="mb-14">
               <p className="text-[#C8882A] text-xs font-bold uppercase tracking-[0.2em] mb-3">What We Do</p>
@@ -284,7 +270,7 @@ export default function Home() {
         </section>
 
         {/* ── ESTIMATE ── */}
-        <section id="estimate" ref={estimateRef} className="py-20 sm:py-28 bg-[#0B1629] relative overflow-hidden">
+        <section id="estimate" className="py-20 sm:py-28 bg-[#0B1629] relative overflow-hidden">
           <div className="absolute top-0 left-0 w-64 h-64 rounded-full bg-[#C8882A]/5 -translate-x-1/2 -translate-y-1/2 pointer-events-none" />
           <div className="absolute bottom-0 right-0 w-96 h-96 rounded-full bg-[#1A9E4F]/5 translate-x-1/3 translate-y-1/3 pointer-events-none" />
           <div className="absolute top-1/2 right-0 w-48 h-48 rounded-full bg-[#E09A30]/4 translate-x-1/2 -translate-y-1/2 pointer-events-none" />
@@ -345,7 +331,7 @@ export default function Home() {
         </section>
 
         {/* ── TESTIMONIALS ── */}
-        <section id="testimonials" ref={testimRef} className="py-20 sm:py-28 bg-[#EAE3D3]">
+        <section id="testimonials" className="py-20 sm:py-28 bg-[#EAE3D3]">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div data-reveal className="mb-14">
               <p className="text-[#C8882A] text-xs font-bold uppercase tracking-[0.2em] mb-3">What Our Clients Say</p>
@@ -375,7 +361,7 @@ export default function Home() {
         </section>
 
         {/* ── FAQ ── */}
-        <section id="faq" ref={faqRef} className="py-20 sm:py-28 bg-[#0F2040] relative overflow-hidden">
+        <section id="faq" className="py-20 sm:py-28 bg-[#0F2040] relative overflow-hidden">
           <div className="absolute top-0 left-0 w-64 h-64 rounded-full bg-[#C8882A]/5 -translate-x-1/2 -translate-y-1/2 pointer-events-none" />
           <div className="absolute bottom-0 right-0 w-96 h-96 rounded-full bg-[#1A9E4F]/5 translate-x-1/3 translate-y-1/3 pointer-events-none" />
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -389,7 +375,7 @@ export default function Home() {
                 <div data-reveal data-delay="80" className="bg-[#162B50] rounded-2xl p-6 border border-white/10">
                   <p className="text-[#E09A30] text-xs font-bold uppercase tracking-widest mb-4">By the numbers</p>
                   {[
-                    { num: "17+",   label: "Years in the GTA" },
+                    { num: "17+",  label: "Years in the GTA" },
                     { num: "1 day", label: "Quote turnaround time" },
                     { num: "500+",  label: "Properties serviced" },
                     { num: "2×",    label: "Recommended per year" },
@@ -432,7 +418,7 @@ export default function Home() {
         </section>
 
         {/* ── FOOTER ── */}
-        <footer ref={footerRef} className="bg-[#0B1629] border-t border-white/10">
+        <footer className="bg-[#0B1629] border-t border-white/10">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-10 mb-10">
               <div data-reveal>
